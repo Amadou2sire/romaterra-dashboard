@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import control from "../pics/switch.png";
 import logo from "../pics/logo.png";
 
-function Sidebar() {
+function Sidebar({ adminRole }) {
   const [open, setOpen] = useState(true);
   const [showUserSubMenu, setShowUserSubMenu] = useState(false);
 
@@ -17,6 +17,13 @@ function Sidebar() {
       link: "/orders",
     },
     {
+      title: "Customers",
+      src: "User",
+      gap: true,
+      link: "/customers",
+      requiresRole: "superadmin",
+    },
+    {
       title: "Collections",
       src: "collection",
       gap: true,
@@ -27,6 +34,12 @@ function Sidebar() {
       src: "categorie",
       gap: true,
       link: "/categories",
+    },
+    {
+      title: "Shipping",
+      src: "Setting",
+      gap: true,
+      link: "/settings",
     },
   ];
 
@@ -64,7 +77,7 @@ function Sidebar() {
           />
         </div>
         <ul className="px-8">
-          {Menus.map((Menu, index) => (
+          {Menus.filter((menu) => !menu.requiresRole || menu.requiresRole === adminRole).map((Menu, index) => (
             <li
               key={index}
               className={`flex flex-col ${Menu.gap ? "mt-5" : "mt-2"}`}

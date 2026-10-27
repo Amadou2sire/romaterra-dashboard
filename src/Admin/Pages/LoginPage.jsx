@@ -4,7 +4,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import backgroundImage from "../pics/bg.png";
 import axiosInstance from "../../api/axiosInstance";
 
-function LoginPage({ setIsConnected, setAdminName }) {
+function LoginPage({ setIsConnected, setAdminName, setAdminRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,21 +18,26 @@ function LoginPage({ setIsConnected, setAdminName }) {
     setLoading(true);
 
     try {
-      const response = await axiosInstance.post("/admin/signin", {
+      const response = await axiosInstance.post("/auth/login", {
         email,
         password,
       });
 
       const data = response.data;
-      const token = data.user?.token || data.token;
-      const name = data.user?.username || data.user?.name || email;
+      const token = data.accessToken;
+      const refreshToken = data.refreshToken;
+      const name = data.admin?.name || data.admin?.email || email;
+      const role = data.admin?.role || "admin";
 
       localStorage.setItem("isConnected", "true");
       localStorage.setItem("token", token);
+      localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("adminName", name);
+      localStorage.setItem("adminRole", role);
 
       setIsConnected(true);
       if (setAdminName) setAdminName(name);
+      if (setAdminRole) setAdminRole(role);
       navigate("/home");
     } catch (err) {
       const message =

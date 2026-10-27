@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import backgroundImage from '../pics/bg.png';
-import axios from "axios";
+import axiosInstance from "../../api/axiosInstance";
 
 function UserDetailPage() {
-  const { userId } = useParams(); // Get the userId from the URL
+  const { userId } = useParams();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch the user details from the backend using the userId
-    axios
-      .get(`http://localhost:3000/admin/users/${userId}`)
+    axiosInstance
+      .get(`/admin/users/${userId}`)
       .then((response) => {
         setUser(response.data);
         setLoading(false);

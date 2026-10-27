@@ -1,31 +1,48 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../api/axiosInstance";
 
-function CreateCategory({ onClose, onAddCollection }) {
+function CreateCategory({ onClose, onSuccess }) {
   const navigate = useNavigate();
 
   const [categoryName, setCategoryName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!categoryName.trim()) return;
 
-    // 🧠 Here later you will call API
-    console.log("New Category:", categoryName);
+    setLoading(true);
+    setError("");
 
-    // reset + redirect
-    setCategoryName("");
-    navigate("/categories");
+    try {
+      const response = await axiosInstance.post("/categories/", { name: categoryName });
+      console.log("Category created:", response.data);
+
+      // reset
+      setCategoryName("");
+
+      // Call onSuccess if provided (parent can handle closing modal and refetching)
+      if (onSuccess) onSuccess();
+      // Always close the modal on success
+      onClose();
+    } catch (err) {
+      console.error("Failed to create category:", err);
+      setError(err.response?.data?.message || "Failed to create category");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden 
+      className="fixed inset-0 flex flex-col items-center justify-center pb-4
       bg-white/30 backdrop-blur-sm transition-transform z-50"
     >
       {/* FORM CARD */}
-      <div className="flex flex-col w-full max-w-2xl bg-white shadow-md rounded-lg p-6 border">
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-white shadow-md rounded-lg px-4 py-6 sm:px-6 sm:py-8 border overflow-y-auto">
         {/* TITLE */}
         <h1
           className="mb-6"
@@ -66,10 +83,12 @@ function CreateCategory({ onClose, onAddCollection }) {
 
             <button
               type="submit"
-              onClick={onAddCollection}
-              className="px-4 py-2 bg-[#A2664E] text-white rounded-md hover:opacity-90"
+              disabled={loading}
+              className={`px-4 py-2 bg-[#A2664E] text-white rounded-md hover:opacity-90 ${
+                loading ? "cursor-not-allowed opacity-50" : ""
+              }`}
             >
-              Save Category
+              {loading ? "Saving..." : "Save Category"}
             </button>
           </div>
         </form>
