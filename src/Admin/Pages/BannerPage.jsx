@@ -155,7 +155,7 @@ function BannerPage() {
             </p>
           </div>
 
-          {previewUrl &&
+          {file && previewUrl &&
             (file.type.startsWith("video/") ? (
               <video src={previewUrl} controls muted className="max-h-56 w-full rounded-md bg-black" />
             ) : (

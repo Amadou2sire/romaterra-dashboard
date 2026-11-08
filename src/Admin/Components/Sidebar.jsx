@@ -58,11 +58,11 @@ function Sidebar({ adminRole }) {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen">
       <div
         className={`${
           open ? "w-72" : "w-32"
-        } h-screen p-2 pt-8 relative duration-300
+        } min-h-screen p-2 pt-8 pb-12 relative duration-300
   bg-gradient-to-b from-[#F4E5C8]/50 via-[#F4E5C8]/75 to-[#FF4E5C8]/95
   backdrop-blur-2xl`}
       >
