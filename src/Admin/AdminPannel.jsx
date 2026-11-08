@@ -13,6 +13,7 @@ import CategoriesPage from "./Pages/CategoriesPage";
 
 import UserDetailPage from "./Pages/UserDetailPage";
 import ShippingSettingsPage from "./Pages/ShippingSettingsPage";
+import BannerPage from "./Pages/BannerPage";
 
 
 import ViewCollection from "./Pages/view-collection";
@@ -131,8 +132,17 @@ function AdminPannel() {
             }
           />
          
-          <Route 
-          path="/view-collection/:id" 
+          <Route
+            path="/banner"
+            element={
+              <ProtectedRoute isConnected={isConnected}>
+                <BannerPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+          path="/view-collection/:id"
           element={<ViewCollection/>} />
 
           <Route

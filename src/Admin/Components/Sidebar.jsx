@@ -36,6 +36,12 @@ function Sidebar({ adminRole }) {
       link: "/categories",
     },
     {
+      title: "Banner",
+      src: "Folder",
+      gap: true,
+      link: "/banner",
+    },
+    {
       title: "Shipping",
       src: "Setting",
       gap: true,
