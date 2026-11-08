@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import CreateProduct from "./FormProduct.jsx";
 
 function ViewProduct({ product, onClose }) {
-  const navigate = useNavigate();
   const [editProduct, setEditProduct] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const images = Array.isArray(product.images)
+    ? product.images
+    : product.images
+      ? [product.images]
+      : [];
+  const firstImage = images[0] || "";
+  const activeImage = images[activeImageIndex] || images[0] || "";
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [product._id, firstImage]);
 
   const HandelEditProduct = () => {
     setEditProduct(true);
@@ -12,10 +22,10 @@ function ViewProduct({ product, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden 
+      className="fixed inset-0 flex flex-col items-center justify-center pb-4
       bg-white/30 backdrop-blur-sm transition-transform z-50"
     >
-      <div className="w-full max-w-5xl bg-white shadow-md rounded-lg p-6 border">
+      <div className="relative w-full max-w-5xl max-h-[90vh] bg-white shadow-md rounded-lg px-4 py-6 sm:px-6 sm:py-8 border overflow-y-auto">
         {/* TITLE */}
         <h1
           className="mb-6 text-center"
@@ -31,22 +41,42 @@ function ViewProduct({ product, onClose }) {
         <div className=" grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* IMAGES */}
           <div className="flex flex-col gap-4">
-            <img
-              src={product.images[0]}
-              alt="product"
-              className="w-full h-80 object-cover rounded-lg border"
-            />
-
-            <div className="flex gap-3">
-              {product.images.map((img, i) => (
+            <div className="flex h-80 items-center justify-center overflow-hidden rounded-lg border bg-white">
+              {activeImage ? (
                 <img
-                  key={i}
-                  src={img}
-                  alt="thumb"
-                  className="w-20 h-20 object-cover rounded border"
+                  src={activeImage}
+                  alt={product.name || "Product"}
+                  className="h-full w-full object-contain"
                 />
-              ))}
+              ) : (
+                <span className="text-sm text-gray-400">No product image</span>
+              )}
             </div>
+
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {images.map((image, index) => (
+                  <button
+                    key={`${image}-${index}`}
+                    type="button"
+                    onClick={() => setActiveImageIndex(index)}
+                    aria-label={`Show product image ${index + 1}`}
+                    aria-pressed={activeImageIndex === index}
+                    className={`h-20 w-20 overflow-hidden rounded border bg-white ${
+                      activeImageIndex === index
+                        ? "border-[#884B2C] ring-1 ring-[#884B2C]"
+                        : "border-gray-300 hover:border-[#884B2C]"
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* INFO */}
@@ -99,10 +129,10 @@ function ViewProduct({ product, onClose }) {
             {/* DETAILS */}
             <div className="text-sm text-gray-700 space-y-2">
               <p>
-                <strong>Category:</strong> {product.category}
+                <strong>Category:</strong> {product.category?.name || "N/A"}
               </p>
               <p>
-                <strong>Collection:</strong> {product.collection}
+                <strong>Collection:</strong> {product.collection?.name || "N/A"}
               </p>
               <p>
                 <strong>Size:</strong> {product.size}

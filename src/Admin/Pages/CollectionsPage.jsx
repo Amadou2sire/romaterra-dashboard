@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
 import CreateCollection from "../Components/CreateCollection.jsx";
@@ -11,55 +11,48 @@ function CollectionsPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  useEffect(() => {
-    const fetchCollections = async () => {
-      try {
-        const response = await axiosInstance.get("/admin/pubs");
-        setCollections(response.data);
-      } catch (err) {
-        setError("Failed to fetch collections.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCollections();
+  const fetchCollections = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await axiosInstance.get(`/collections/`);
+      setCollections(response.data);
+    } catch (err) {
+      setError("Failed to fetch collections.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCollections();
+  }, [fetchCollections]);
 
   const handelAddCollection = () => {
     setShowCreateModal(true);
   };
 
-  const handleValidationToggle = async (collectionId, isvalidated) => {
-    try {
-      await axiosInstance.put(`/admin/pubs/${collectionId}`, {
-        isvalidated: !isvalidated,
-      });
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this collection?")) {
+      return;
+    }
 
+    try {
+      await axiosInstance.delete(`/collections/${id}`);
       setCollections((currentCollections) =>
-        currentCollections.map((collection) =>
-          collection._id === collectionId
-            ? { ...collection, isvalidated: !isvalidated }
-            : collection,
-        ),
+        currentCollections.filter((collection) => collection._id !== id),
       );
     } catch (err) {
-      setError("Failed to update collection validation.");
+      setError("Failed to delete collection.");
     }
-  };
-
-  const handleDelete = (id) => {
-    setCollections((currentCollections) =>
-      currentCollections.filter((collection) => collection._id !== id),
-    );
   };
 
   const getImageUrl = (collection) => {
     const image = collection.image || collection.Image || collection.pubImage;
     if (!image) return "https://via.placeholder.com/64";
     if (image.startsWith("http")) return image;
-
-    return `${process.env.REACT_APP_API_URL}/images${image}`;
+    // If for some reason the image is not a full URL, fallback to placeholder
+    return "https://via.placeholder.com/64";
   };
 
   return (
@@ -97,12 +90,6 @@ function CollectionsPage() {
               <th className="px-4 py-3 text-left">Image</th>
               <th className="px-4 py-3 text-left">Title</th>
               <th className="px-4 py-3 text-left">Description</th>
-              <th className="px-4 py-3 text-left">Address</th>
-              <th className="px-4 py-3 text-left">Rating</th>
-              <th className="px-4 py-3 text-left">Category</th>
-              <th className="px-4 py-3 text-left">State</th>
-              <th className="px-4 py-3 text-left">Percentage</th>
-              <th className="px-4 py-3 text-center">Validated</th>
               <th className="px-4 py-3 text-center">Actions</th>
             </tr>
           </thead>
@@ -111,7 +98,7 @@ function CollectionsPage() {
             {loading ? (
               <tr>
                 <td
-                  colSpan="11"
+                  colSpan="5"
                   className="px-4 py-6 text-center text-gray-500"
                 >
                   Loading collections...
@@ -120,7 +107,7 @@ function CollectionsPage() {
             ) : collections.length === 0 ? (
               <tr>
                 <td
-                  colSpan="11"
+                  colSpan="5"
                   className="px-4 py-6 text-center text-gray-500"
                 >
                   No collections found.
@@ -147,48 +134,16 @@ function CollectionsPage() {
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {collection.title}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {collection.description}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {collection.adress || "N/A"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {collection.rating ?? "N/A"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {collection.category || "N/A"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {collection.state || "N/A"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {collection.state === "promo"
-                      ? collection.pourcentage
-                      : "N/A"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <label className="inline-flex relative items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={Boolean(collection.isvalidated)}
-                        onChange={() =>
-                          handleValidationToggle(
-                            collection._id,
-                            collection.isvalidated,
-                          )
-                        }
-                      />
-                      <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </td>
+
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() =>
-                          navigate(`/view-collection/${collection._id}`)
-                        }
+                          navigate(`/view-collection/${collection._id}`)}
                         className="px-3 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300"
                       >
                         View
@@ -196,8 +151,7 @@ function CollectionsPage() {
 
                       <button
                         onClick={() =>
-                          navigate(`/edit-collection/${collection._id}`)
-                        }
+                          navigate(`/edit-collection/${collection._id}`)}
                         className="px-3 py-1 text-xs bg-blue-200 rounded hover:bg-blue-300"
                       >
                         Edit
@@ -221,7 +175,10 @@ function CollectionsPage() {
       {showCreateModal && (
         <CreateCollection
           onClose={() => setShowCreateModal(false)}
-          onAddCollection={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            fetchCollections();
+          }}
         />
       )}
     </div>

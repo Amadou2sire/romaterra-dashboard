@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
 import CreateCategory from "../Components/CreateCategory.jsx";
 import CreateProduct from "../Components/FormProduct.jsx";
@@ -7,11 +7,16 @@ import ViewProduct from "../Components/ViewProduct.jsx";
 import { Eye, SquarePen, Trash2 } from "lucide-react";
 import ConfirmAlert from "../Components/ConfirmAlert.jsx";
 
+const PRODUCTS_PER_PAGE = 6;
+
 function CategoriesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [product, setProduct] = useState();
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,30 +35,36 @@ function CategoriesPage() {
     try {
       const response = await axiosInstance.get("/products/");
       setProducts(response.data);
-      console.log("Fetched products:", response.data);
     } catch (err) {
-      setError("Failed to fetch categories and products.");
+      setError("Failed to fetch products.");
     } finally {
       if (showLoader) setLoading(false);
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    setError("");
+    try {
+      const response = await axiosInstance.get("/categories/");
+      setCategories(response.data);
+    } catch (err) {
+      setError("Failed to fetch categories.");
     }
   }, []);
 
   const productView = (p) => {
     setProduct(p);
     setShowProduct(true);
-    console.log("Viewing product:", p);
   };
 
   const productEdit = (p) => {
     setProduct(p);
     setEditProduct(true);
-    console.log("Editing product:", p);
   };
 
   const productToDelete = (product) => {
     setProductToDelete(product);
     setAlertDelete(true);
-    console.log("Preparing to delete product:", product);
   };
 
   const productDelete = async (product) => {
@@ -74,28 +85,55 @@ function CategoriesPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    fetchCategories();
+  }, [fetchProducts, fetchCategories]);
+
+  useEffect(() => {
+    const searchProductId = location.state?.searchProductId;
+    if (!searchProductId || products.length === 0) return;
+
+    const matchingProduct = products.find((item) => item._id === searchProductId);
+    if (!matchingProduct) return;
+
+    setProduct(matchingProduct);
+    setShowProduct(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, products]);
 
   const categoriesList = useMemo(() => {
-    const categories = products
-      .map((product) => product.category)
+    // If we have fetched categories from backend, use them
+    if (categories.length > 0) {
+      return ["All", ...categories.map(cat => cat.name)];
+    }
+    // Fallback to deriving categories from products (while loading or if fetch failed)
+    const categoriesFromProducts = products
+      .map((product) => product.category?.name || product.category)
       .filter(Boolean);
-
-    return ["All", ...new Set(categories)];
-  }, [products]);
+    return ["All", ...new Set(categoriesFromProducts)];
+  }, [products, categories]);
 
   const filteredProducts = useMemo(() => {
     if (selectedCategory === "All") return products;
 
-    return products.filter((product) => product.category === selectedCategory);
+    return products.filter((product) => product.category?.name === selectedCategory);
   }, [products, selectedCategory]);
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+  const pageStart = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  const visibleProducts = filteredProducts.slice(pageStart, pageStart + PRODUCTS_PER_PAGE);
 
-  /*  const getImageUrl = (product) => {
-    if (!product.pubImage) return "https://via.placeholder.com/64";
-    if (product.pubImage.startsWith("http")) return product.pubImage;
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, Math.max(1, totalPages)));
+  }, [totalPages]);
 
-    return `${process.env.REACT_APP_API_URL}/images${product.pubImage}`;
-  }; */
+  const getImageUrl = (product) => {
+    // The Product model stores images as an ARRAY of URLs (e.g. ImageKit).
+    const image =
+      product.images?.[0] || product.pubImage || product.image || product.img;
+    if (!image) return "https://via.placeholder.com/64";
+    if (image.startsWith("http")) return image;
+    // If for some reason the image is not a full URL, fallback to placeholder
+    return "https://via.placeholder.com/64";
+  };
 
   return (
     <div className="p-6">
@@ -131,7 +169,10 @@ function CategoriesPage() {
         {categoriesList.map((category) => (
           <button
             key={category}
-            onClick={() => setSelectedCategory(category)}
+            onClick={() => {
+              setSelectedCategory(category);
+              setCurrentPage(1);
+            }}
             className={`px-4 py-2 rounded-md border text-sm ${
               selectedCategory === category
                 ? "bg-[#A2664E] text-white border-[#A2664E]"
@@ -188,16 +229,16 @@ function CategoriesPage() {
                 </td>
               </tr>
             ) : (
-              filteredProducts.map((product, index) => (
+              visibleProducts.map((product, index) => (
                 <tr key={product._id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {index + 1}
+                    {pageStart + index + 1}
                   </td>
 
                   <td className="px-4 py-3">
                     <img
                       className="h-16 w-16 rounded object-cover"
-                      //src={getImageUrl(product)}
+                      src={getImageUrl(product)}
                       alt={product.name}
                       onError={(e) => {
                         e.currentTarget.src = "https://via.placeholder.com/64";
@@ -208,29 +249,39 @@ function CategoriesPage() {
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {product.name}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 max-w-sm">
-                    {product.description}
+
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="block max-w-sm truncate" title={product.description || ""}>
+                      {product.description || "N/A"}
+                    </div>
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {product.price?.toLocaleString() + " DT" || "N/A"}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {product.promoPrice
                       ? product.promoPrice.toLocaleString() + " DT"
                       : "N/A"}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {product.size || "N/A"}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {product.quantityInStock ?? "N/A"}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {product.category || "N/A"}
+                    {product.category?.name || "N/A"}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {product.collection || "N/A"}
+                    {product.collection?.name || "N/A"}
                   </td>
+
                   <td className="px-4 py-3 text-center">
                     {/* STATUS BADGE */}
                     {product.status === "Promo" && (
@@ -281,10 +332,43 @@ function CategoriesPage() {
           </tbody>
         </table>
       </div>
+
+      {!loading && filteredProducts.length > 0 && (
+        <div className="flex flex-col gap-3 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-600">
+            Showing {pageStart + 1}–{Math.min(pageStart + PRODUCTS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length} products
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="min-w-20 text-center text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage >= totalPages}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {showCreateCategory && (
         <CreateCategory
           onClose={() => setShowCreateCategory(false)}
-          onAddCollection={() => setShowCreateCategory(false)}
+          onSuccess={() => {
+            setShowCreateCategory(false);
+            fetchCategories();
+          }}
         />
       )}
       {showCreateProduct && (

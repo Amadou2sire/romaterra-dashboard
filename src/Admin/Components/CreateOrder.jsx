@@ -96,9 +96,10 @@ function CreateOrder({ onClose, onAddOrder }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-white/30 p-4 backdrop-blur-sm transition-transform"
+      className="fixed inset-0 flex flex-col items-center justify-center pb-4
+      bg-white/30 backdrop-blur-sm transition-transform z-50"
     >
-      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-y-auto rounded-lg border bg-white p-6 shadow-md">
+      <div className="relative w-full max-w-3xl max-h-[90vh] flex-col overflow-y-auto rounded-lg border bg-white px-4 py-6 sm:px-6 sm:py-8 shadow-md">
         <h1
           className="mb-6"
           style={{
